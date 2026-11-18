@@ -295,10 +295,6 @@ public final class MainActivity extends Activity {
         fixed(brand, emblem, 38, 38, 0);
         TextView label = text("Дота Шпион", 16, TEXT, true);
         flexible(brand, label);
-        TextView offline = text("●  Офлайн", 12, MINT, false);
-        offline.setBackground(Glass.surface(0x1e8ce9b4, 0x098ce9b4, 0x417dce9e, dp(20)));
-        padding(offline, 10, 5);
-        brand.addView(offline);
         append(page, brand, 0);
 
         if (deck == null) {
@@ -510,6 +506,9 @@ public final class MainActivity extends Activity {
 
         enable(start, categories != 0);
         append(page, start, 13);
+        TextView credit = text("by Caphes", 13, MUTED, false);
+        credit.setGravity(Gravity.CENTER);
+        append(page, credit, 12);
     }
 
     private void addCategory(LinearLayout panel, String label, int category, View start) {
