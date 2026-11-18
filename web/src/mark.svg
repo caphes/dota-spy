@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="glass" x2="1" y2="1">
+      <stop stop-color="#2f5847"/><stop offset="1" stop-color="#121f1b"/>
+    </linearGradient>
+    <linearGradient id="blade" x2="1" y2="1">
+      <stop stop-color="#f0fff4"/><stop offset="1" stop-color="#70dba5"/>
+    </linearGradient>
+  </defs>
+  <path d="M64 7 112 34v60l-48 27-48-27V34Z" fill="url(#glass)" stroke="#8bdbb1" stroke-width="1.5"/>
+  <path d="M64 15 105 38v52l-41 23-41-23V38Zm-30 37 18 18m24-12 18 18" fill="none" stroke="#426957"/>
+  <path d="m84 36-7 29-16 16-14-14 16-16Z" fill="url(#blade)"/>
+  <path d="m84 36-29 39 22-10Z" fill="#4a9c75"/>
+  <path d="m47 62 19 19-5 5-8-8-10 10-4-4 10-10-7-7Zm-12 23 8 8-5 5-8-8Z" fill="#e0ffec"/>
+  <path d="M96 36v12m-6-6h12M36 33v10m-5-5h10" fill="none" stroke="#aceaca" stroke-width="1.2" stroke-linecap="round"/>
+</svg>

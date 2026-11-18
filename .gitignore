@@ -2,6 +2,7 @@
 .idea/
 .tools/
 **/build/
+web/dist/
 .asset-cache/
 private-art/
 local.properties

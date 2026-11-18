@@ -6,6 +6,8 @@
 
 ## Скачать на телефон
 
+На iPhone откройте [веб-версию «Дота Шпион»](https://caphes.github.io/dota-spy/) в Safari. Чтобы добавить игру на экран «Домой», выберите **Поделиться → На экран «Домой»**. После первой полной загрузки игру можно открыть без интернета. [Инструкция Apple](https://support.apple.com/guide/iphone/iphea86e5236/ios)
+
 Откройте [страницу последнего релиза](https://github.com/caphes/dota-spy/releases/latest) на Android и скачайте APK из раздела **Assets**. Откройте файл из папки загрузок и разрешите установку из этого источника, если Android запросит разрешение.
 
 ## Сборка и установка
@@ -57,6 +59,7 @@ dota-spy/
 │       │   └── res/
 │       └── test/java/ru/dotaspy/game/GameRulesTest.java
 ├── scripts/build-apk.cmd
+├── web/                           # Веб-приложение и сборка для GitHub Pages
 ├── gradle/wrapper/
 ├── gradlew / gradlew.bat
 ├── gradle.properties
@@ -67,6 +70,8 @@ dota-spy/
 ## GitHub Actions и релизы
 
 GitHub Actions запускает тесты, проверяет подпись APK, наличие колоды и отсутствие разрешения на интернет. APK из CI доступен в **Actions → Сборка Android APK → Artifacts → dota-spy-android-debug**. Файл в разделе **Releases** можно скачать на телефон напрямую.
+
+Веб-версия использует ту же колоду. Для локальной веб-сборки сначала соберите APK, затем выполните `node web/build.mjs` с Node.js 22. Результат появится в `web/dist/`. GitHub Pages получает иллюстрации из проверенного Android-релиза. При изменении набора карточек обновите ссылку на APK и его SHA-256 в `.github/workflows/pages.yml`.
 
 Android принимает обновление поверх установленной версии, если оба APK подписаны одним и тем же ключом. [Документация Android по подписи](https://developer.android.com/studio/publish/app-signing)
 

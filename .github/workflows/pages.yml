@@ -1,0 +1,45 @@
+name: Веб-версия для iPhone
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'app/src/main/assets/deck.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Подготовить иллюстрации
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/caphes/dota-spy/releases/download/v1.1.1/DotaSpy-1.1.1.apk \
+            --output "$RUNNER_TEMP/dota-spy.apk"
+          echo "1ec874f30877a15c7d4f5a9373df81d73b4e6f842c9366d3d13459074a43bfda  $RUNNER_TEMP/dota-spy.apk" | sha256sum --check
+          unzip -q "$RUNNER_TEMP/dota-spy.apk" 'assets/cards/*' -d "$RUNNER_TEMP/dota-spy-art"
+      - run: node web/build.mjs "$RUNNER_TEMP/dota-spy-art/assets"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
