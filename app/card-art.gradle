@@ -1,0 +1,108 @@
+import groovy.json.JsonSlurper
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
+
+def catalog = file('src/main/assets/deck.json')
+def generated = layout.buildDirectory.dir('generated/cardAssets')
+def artCache = rootProject.layout.projectDirectory.dir('.asset-cache').asFile
+def pudgePhoto = rootProject.file('private-art/pudge.jpg')
+def pudgePhotoAsset = './assets/cards/hero/pudge_photo.jpg'
+def catalogSize = [hero: 127, item: 50]
+def totalCards = catalogSize.values().sum()
+def skipDownload = providers.gradleProperty('placeholderArt').isPresent()
+def cdn = ['https://cdn.cloudflare.steamstatic.com', 'https://cdn.steamstatic.com']
+def signature = [137, 80, 78, 71, 13, 10, 26, 10]
+
+def validPng = { byte[] bytes ->
+    bytes.length > 100 && (0..7).every { index -> (bytes[index] & 255) == signature[index] }
+}
+
+def fetchArt = { card, File destination ->
+    String collection = card.category == 'hero' ? 'heroes' : 'items'
+    String relative = "cards/${card.category}/${card.id}.png"
+    File cached = new File(artCache, relative)
+    byte[] bytes = cached.isFile() ? cached.bytes : new byte[0]
+
+    if (!validPng(bytes)) {
+        def urls = cdn.collect { "${it}/apps/dota2/images/dota_react/${collection}/${card.id}.png" }
+        if (collection == 'items') urls.add("${cdn[0]}/apps/dota2/images/items/${card.id}_lg.png")
+        for (String url : urls) {
+            try {
+                def connection = URI.create(url).toURL().openConnection()
+                connection.connectTimeout = 3500
+                connection.readTimeout = 3500
+                connection.inputStream.withCloseable { stream -> bytes = stream.readNBytes(2_000_001) }
+                if (bytes.length <= 2_000_000 && validPng(bytes)) {
+                    cached.parentFile.mkdirs()
+                    def staging = Files.createTempFile(cached.parentFile.toPath(), 'art-', '.part')
+                    try {
+                        Files.write(staging, bytes)
+                        Files.move(staging, cached.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                    } finally {
+                        Files.deleteIfExists(staging)
+                    }
+                    break
+                }
+                bytes = new byte[0]
+            } catch (IOException ignored) {
+                bytes = new byte[0]
+            }
+        }
+    }
+
+    if (validPng(bytes)) {
+        File output = new File(destination, relative)
+        output.parentFile.mkdirs()
+        output.bytes = bytes
+    }
+}
+
+tasks.register('prepareCardArt') {
+    inputs.file(catalog)
+    inputs.files(pudgePhoto)
+    inputs.property('placeholderArt', skipDownload)
+    outputs.dir(generated)
+    // Retry any missing CDN assets on the next build. Successful files are cached locally.
+    outputs.upToDateWhen {
+        skipDownload || fileTree(generated.get().asFile).matching { include '**/*.png', '**/*.jpg' }.files.size() == totalCards
+    }
+
+    doLast {
+        def cards = new JsonSlurper().parse(catalog)
+        if (cards.groupBy { it.category }.collectEntries { category, list -> [(category): list.size()] } != catalogSize
+                || cards.collect { it.id }.toSet().size() != totalCards
+                || cards.any { !(it.id ==~ /[a-z0-9_]+/) || !it.name || !it.description ||
+                        it.image != "./assets/cards/${it.category}/${it.id}.png" ||
+                        it.localImage != (it.id == 'pudge' && it.category == 'hero' ? pudgePhotoAsset : null) }) {
+            throw new GradleException("Expected a valid deck of ${catalogSize.hero} heroes and ${catalogSize.item} items.")
+        }
+        File destination = generated.get().asFile
+        delete(destination)
+        destination.mkdirs()
+        def downloadCards = cards
+        int customArt = 0
+        if (pudgePhoto.isFile()) {
+            File output = new File(destination, pudgePhotoAsset.substring('./assets/'.length()))
+            output.parentFile.mkdirs()
+            Files.copy(pudgePhoto.toPath(), output.toPath())
+            downloadCards = cards.findAll { it.localImage == null }
+            customArt = 1
+        }
+        if (skipDownload) return
+        def pool = Executors.newFixedThreadPool(8)
+        try {
+            def jobs = downloadCards.collect { card -> { fetchArt(card, destination); null } as Callable }
+            pool.invokeAll(jobs).each { it.get() }
+        } finally {
+            pool.shutdownNow()
+        }
+        int artCount = fileTree(destination).matching { include '**/*.png' }.files.size()
+        logger.lifecycle("Dota Spy: ${artCount} CDN illustrations, ${customArt} custom photos, ${totalCards - artCount - customArt} local fallbacks")
+    }
+}
+
+tasks.named('preBuild').configure {
+    dependsOn 'prepareCardArt'
+}
